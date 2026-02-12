@@ -31,17 +31,37 @@ const SequenceScroll = ({ onLoadProgress, onLoadComplete }) => {
     const loadImages = async () => {
       const imagePromises = [];
       const loadedImages = [];
+      let loadedCount = 0;
+      
+      // Timeout safety net - if images don't load in 30 seconds, force complete
+      const loadTimeout = setTimeout(() => {
+        if (!isLoaded) {
+          console.warn('Image loading timeout - forcing completion');
+          setImages(loadedImages);
+          setIsLoaded(true);
+          onLoadComplete?.();
+        }
+      }, 30000);
 
       for (let i = 0; i < TOTAL_FRAMES; i++) {
         const promise = new Promise((resolve, reject) => {
           const img = new Image();
+          
           img.onload = () => {
             loadedImages[i] = img;
-            const progress = ((i + 1) / TOTAL_FRAMES) * 100;
+            loadedCount++;
+            const progress = (loadedCount / TOTAL_FRAMES) * 100;
             onLoadProgress?.(progress);
+            console.debug(`Loaded image ${i + 1}/${TOTAL_FRAMES}`);
             resolve(img);
           };
-          img.onerror = reject;
+          
+          img.onerror = (error) => {
+            console.error(`Failed to load frame ${i + 1}: ${getFrameUrl(i)}`);
+            // Don't fail completely, continue loading other images
+            resolve(null);
+          };
+          
           img.src = getFrameUrl(i);
         });
         imagePromises.push(promise);
@@ -49,16 +69,23 @@ const SequenceScroll = ({ onLoadProgress, onLoadComplete }) => {
 
       try {
         await Promise.all(imagePromises);
+        clearTimeout(loadTimeout);
         setImages(loadedImages);
         setIsLoaded(true);
         onLoadComplete?.();
+        console.log('All images loaded successfully');
       } catch (error) {
+        clearTimeout(loadTimeout);
         console.error('Error loading images:', error);
+        // Even on error, complete the loading
+        setImages(loadedImages);
+        setIsLoaded(true);
+        onLoadComplete?.();
       }
     };
 
     loadImages();
-  }, [onLoadProgress, onLoadComplete]);
+  }, [onLoadProgress, onLoadComplete, isLoaded]);
 
   // Handle canvas resize
   useEffect(() => {
