@@ -28,6 +28,11 @@ const memories = [
     quote: "Pakai Gmeet nda tau kapan pertama ku lupami",
     author: "Memory #5",
   },
+  {
+    id: 6,
+    quote: "Kasih kado TGL 23 Februari 2026",
+    author: "Memory #6",
+  },
 ];
 
 const TestimonialSlider = () => {
